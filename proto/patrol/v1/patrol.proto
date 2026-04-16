@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package patrol.v1;
+
+option go_package = "github.com/renvins/patrol/gen/patrol/v1;patrolv1";
+
+service PatrolService {
+    rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+    rpc GetGate(GetGateRequest) returns (GetGateResponse);
+}
+
+message GetStatusRequest {
+    string slo_name = 1;
+}
+
+message GetStatusResponse {
+  string slo_name = 1;
+  double burn_rate = 2;
+  double budget_consumed = 3;
+  double budget_remaining = 4;
+  double error_rate = 5;
+  string updated_at = 6;
+}
+
+message GetGateRequest {
+  string slo_name = 1;
+}
+
+message GetGateResponse {
+  bool allow = 1;
+  string reason = 2;
+}

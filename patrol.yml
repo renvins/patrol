@@ -1,0 +1,16 @@
+slos:
+  - name: checkout-availability
+    service: checkout
+    sli:
+      source: prometheus
+      query: 'sum(rate(...))'
+    objective: 99.9
+    window: 30d
+    burn_rate_alerts:
+      - window: 1h
+        threshold: 14.4
+        severity: critical
+    policies:
+      - when: budget_remaining < 25%
+        action: webhook
+        target: https://ci.internal/freeze
