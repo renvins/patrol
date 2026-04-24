@@ -12,6 +12,7 @@ import (
 	"github.com/renvins/patrol/internal/config"
 	"github.com/renvins/patrol/internal/engine"
 	"github.com/renvins/patrol/internal/grpcserver"
+	"github.com/renvins/patrol/internal/policy"
 	"github.com/renvins/patrol/internal/prometheus"
 	"github.com/spf13/cobra"
 )
@@ -43,6 +44,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	eng := engine.New(prometheusClient, sloConfig, 30*time.Second)
 	restServer := api.New(eng)
 	grpcServer := grpcserver.New(eng)
+	policyEvaluator := policy.New(eng, sloConfig, 30*time.Second)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -50,6 +52,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	engineErrChan := make(chan error, 1)
 	restErrChan := make(chan error, 1)
 	grpcErrChan := make(chan error, 1)
+	policyErrChan := make(chan error, 1)
 
 	go func() {
 		if err := eng.Run(ctx); err != nil {
@@ -69,6 +72,12 @@ func runServe(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
+	go func() {
+		if err := policyEvaluator.Run(ctx); err != nil {
+			policyErrChan <- err
+		}
+	}()
+
 	slog.Info("patrol started", "rest", listenAddr, "grpc", grpcAddr, "config", configPath)
 
 	select {
@@ -78,6 +87,8 @@ func runServe(cmd *cobra.Command, args []string) error {
 		slog.Error("rest server error", "error", err)
 	case err := <-grpcErrChan:
 		slog.Error("grpc server error", "error", err)
+	case err := <-policyErrChan:
+		slog.Error("policy evaluator error", "error", err)
 	}
 	return nil
 }

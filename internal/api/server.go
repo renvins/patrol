@@ -25,9 +25,14 @@ func New(e *engine.Engine) *Server {
 }
 
 func (s *Server) Run(ctx context.Context, addr string) error {
+	var handler http.Handler = s.mux
+	handler = Logger(handler)
+	handler = Recoverer(handler)
+	handler = RequestID(handler)
+
 	server := http.Server{
 		Addr:    addr,
-		Handler: s.mux,
+		Handler: handler,
 	}
 
 	serverErr := make(chan error)
